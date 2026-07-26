@@ -40,12 +40,15 @@
 //!
 //! # Errors
 //!
-//! There are none. Every operation is total. [`BinaryHeap::pop`], [`BinaryHeap::peek`], and
-//! [`BinaryHeap::peek_mut`] return `None` on an empty heap, and nothing else can fail.
-//! [`BinaryHeap::with_capacity`], [`BinaryHeap::reserve`], and `extend` panic on a capacity that
-//! no allocation can hold, exactly as [`Vec`](alloc::vec::Vec) does. A panic raised inside your
-//! own comparator propagates and leaves the heap holding every element exactly once, possibly out
-//! of order.
+//! There is no error type. Every operation is total. [`BinaryHeap::pop`], [`BinaryHeap::peek`],
+//! and [`BinaryHeap::peek_mut`] return `None` on an empty heap.
+//!
+//! Four calls panic, and only on a capacity no allocation can hold, exactly as
+//! [`Vec`](alloc::vec::Vec) does: [`BinaryHeap::with_capacity`], [`BinaryHeap::reserve`],
+//! [`BinaryHeap::push`], and `extend`. Nothing else fails on any input.
+//!
+//! A panic raised inside your own comparator leaves the heap holding every element exactly once,
+//! possibly out of order. It propagates, with the one exception recorded on [`PeekMut`].
 
 #![no_std]
 #![forbid(unsafe_code)]

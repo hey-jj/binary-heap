@@ -13,8 +13,10 @@ use crate::compare::{Compare, Max, Min};
 ///
 /// The comparator is written once, in the same expression that writes the element buffer, and
 /// there is no way to change it afterwards. No setter, no `&mut` access to it, no `as_mut_vec`,
-/// and no `From<Vec<T>>`. So no call sequence can pair a buffer with an order that did not
-/// arrange it.
+/// and no `From<Vec<T>>`. So no call sequence can swap in an order that did not arrange the
+/// buffer. A comparator that changes its own answers, through interior mutability or through
+/// state it reads elsewhere, is outside that guarantee: it can leave the buffer arranged under
+/// answers it no longer gives.
 ///
 /// [`as_slice`](Self::as_slice) and [`comparator`](Self::comparator) are both public, which lets a
 /// caller check the heap property from outside this crate.
@@ -117,6 +119,12 @@ impl<T, C: Compare<T>> BinaryHeap<T, C> {
     }
 
     /// Adds an element. Amortized O(log n).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer has to grow past what an allocation can hold, the same condition
+    /// under which [`Vec::push`] panics. Reaching it takes a heap already holding `usize::MAX`
+    /// zero-sized elements, or a growth step past `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -571,7 +579,10 @@ impl<T: fmt::Debug, C> fmt::Debug for BinaryHeap<T, C> {
 ///
 /// Leaking the guard with [`core::mem::forget`] skips that sift. The heap keeps every element and
 /// stays usable, and the heap property can stay violated until the next operation restores it.
-/// That leak is the only way to observe a broken heap property from safe code.
+///
+/// A guard that handed out `&mut` calls your comparator while it drops. If that call panics while
+/// the guard is already dropping during another unwind, the process aborts, as a panic during a
+/// panic always does.
 ///
 /// # Examples
 ///

@@ -82,15 +82,19 @@ to invent one and then read the elements under an order that did not arrange the
 
 The comparator is a private field, written only in the same expression that writes the element
 buffer. There is no setter, no `&mut` access to it, no `as_mut_vec`, and no `From<Vec<T>>`. So no
-call sequence can pair a buffer with an order that did not arrange it, and that includes
+call sequence can swap in an order that did not arrange the buffer, and that includes
 `clone_from`, which stays at the trait default and replaces the whole value.
+
+A comparator that changes its own answers is outside that guarantee. Nothing can hold a buffer to
+an order the comparator itself stops giving.
 
 ## Requirements
 
 `#![no_std]` with `extern crate alloc`, so an allocator is the only thing needed. No cargo
 features and no dependencies. `#![forbid(unsafe_code)]`.
 
-MSRV is 1.56.0, which is what edition 2021 needs. Nothing else in the crate reaches past 1.27.
+MSRV is 1.56.0, which is what edition 2021 needs. A CI job runs the test suite and the doctests on
+that exact release, so the floor is tested and not asserted.
 
 ## License
 

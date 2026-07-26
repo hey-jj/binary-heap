@@ -13,7 +13,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use binary_heap::{BinaryHeap, Max, Min, PeekMut};
+use binary_heap::{BinaryHeap, Compare, Max, Min, PeekMut};
 use common::{assert_heap_property, Order, Rng};
 
 #[test]
@@ -116,7 +116,21 @@ fn extreme_integer_values_survive_every_operation() {
 
 #[test]
 fn floats_order_through_a_caller_supplied_closure() {
-    // `f64` has no `Ord`, so the caller brings the total order. `total_cmp` is one.
+    // `f64` has no `Ord`, so the caller brings the total order. The IEEE-754 total order is one,
+    // and it separates the two zeros and gives NaN a place, which `partial_cmp` cannot do.
+    //
+    // Reading the bits as `i64` almost gives it. Positive values already sort correctly against
+    // each other, negative ones come out reversed and above the positives. Flipping every bit
+    // below the sign of a negative value fixes both, so XOR the sign bit smeared across the low
+    // 63 bits and compare.
+    fn total_order(left: &f64, right: &f64) -> Ordering {
+        let key = |value: &f64| {
+            let bits = value.to_bits() as i64;
+            bits ^ (((bits >> 63) as u64) >> 1) as i64
+        };
+        key(left).cmp(&key(right))
+    }
+
     let values = vec![
         0.5f64,
         -0.0,
@@ -125,7 +139,7 @@ fn floats_order_through_a_caller_supplied_closure() {
         f64::NEG_INFINITY,
         f64::NAN,
     ];
-    let sorted = BinaryHeap::from_vec(values, |a: &f64, b: &f64| a.total_cmp(b)).into_sorted_vec();
+    let sorted = BinaryHeap::from_vec(values, total_order).into_sorted_vec();
 
     assert_eq!(sorted[0], f64::NEG_INFINITY);
     assert!(sorted[1].is_sign_negative());
@@ -139,6 +153,9 @@ fn floats_order_through_a_caller_supplied_closure() {
 fn a_full_length_heap_of_zero_sized_elements_builds_and_sorts_without_walking_it() {
     // `vec![(); usize::MAX]` allocates nothing and builds in constant time. A heapify or a sort
     // that walked it would run longer than the machine will, so the check is a timeout.
+    //
+    // That constant-time build is newer than 1.56.0, which writes the elements one at a time and
+    // never returns. The MSRV job skips this test for that reason and nothing else.
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let mut heap = BinaryHeap::from_vec(vec![(); usize::MAX], Max);
@@ -175,7 +192,7 @@ fn sorted_reverse_sorted_and_uniform_input_all_heapify_correctly() {
 
         let mut expected = input;
         expected.sort_unstable();
-        assert_eq!(heap.into_sorted_vec(), expected, "{name}");
+        assert_eq!(heap.into_sorted_vec(), expected, "{}", name);
     }
 }
 
@@ -195,7 +212,7 @@ fn comparators_that_always_answer_the_same_way_terminate_and_keep_every_element(
 
         let mut drained = heap.into_sorted_vec();
         drained.sort_unstable();
-        assert_eq!(drained, (0..500).collect::<Vec<i32>>(), "{name}");
+        assert_eq!(drained, (0..500).collect::<Vec<i32>>(), "{}", name);
     }
 }
 
@@ -236,7 +253,7 @@ fn a_comparator_drawn_from_a_generator_never_hangs_or_loses_an_element() {
         popped.extend_from_slice(heap.as_slice());
         popped.sort_unstable();
         pushed.sort_unstable();
-        assert_eq!(popped, pushed, "seed {seed}");
+        assert_eq!(popped, pushed, "seed {}", seed);
         cases += 1;
     }
 
@@ -295,6 +312,53 @@ fn a_comparator_that_panics_leaves_every_element_in_the_heap() {
 
 #[test]
 #[should_panic(expected = "capacity overflow")]
+fn push_past_the_zero_sized_length_limit_panics() {
+    // The one input that makes `push` panic. `vec![(); usize::MAX]` costs nothing to build, so the
+    // next push has nowhere to put the element and `Vec` says so. Skipped by the MSRV job for the
+    // same reason as the test above.
+    let mut heap = BinaryHeap::from_vec(vec![(); usize::MAX], Max);
+    heap.push(());
+}
+
+#[test]
+fn an_inconsistent_comparator_can_leave_the_heap_property_broken() {
+    // Safe code, no leaked guard, no unsafe. The docs say the guarantee covers comparators that
+    // keep answering the same way, and this is what falls outside it.
+    let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4, 5], |_: &i32, _: &i32| Ordering::Less);
+    assert_eq!(heap.as_slice(), [1, 2, 3, 4, 5]);
+    assert_eq!(
+        heap.comparator()
+            .compare(&heap.as_slice()[0], &heap.as_slice()[1]),
+        Ordering::Less,
+        "the root should not outrank its child under this comparator"
+    );
+
+    // A comparator that changes its own answers reaches the same place. The buffer keeps the
+    // arrangement the build asked for, and the new answers disagree with it.
+    let reversed = Cell::new(false);
+    let flipping = |a: &i32, b: &i32| {
+        if reversed.get() {
+            b.cmp(a)
+        } else {
+            a.cmp(b)
+        }
+    };
+    let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4, 5], flipping);
+    assert_ne!(
+        heap.comparator()
+            .compare(&heap.as_slice()[0], &heap.as_slice()[1]),
+        Ordering::Less
+    );
+    reversed.set(true);
+    assert_eq!(
+        heap.comparator()
+            .compare(&heap.as_slice()[0], &heap.as_slice()[1]),
+        Ordering::Less
+    );
+}
+
+#[test]
+#[should_panic(expected = "capacity overflow")]
 fn reserve_past_the_allocation_limit_panics() {
     let mut heap: BinaryHeap<i64, Max> = BinaryHeap::new(Max);
     heap.reserve(usize::MAX);
@@ -335,8 +399,8 @@ fn forgetting_a_peek_guard_keeps_every_element_and_panics_at_no_later_point() {
 
     let mut guard = heap.peek_mut().unwrap();
     *guard = -1;
-    // Leaking the guard skips the sift, so the heap property can stay violated. Documented, and
-    // the only way to reach that state from safe code.
+    // Leaking the guard skips the sift, so the heap property can stay violated. Documented. An
+    // inconsistent comparator reaches the same state by another route, covered above.
     std::mem::forget(guard);
 
     assert_eq!(heap.len(), 6);
@@ -374,7 +438,7 @@ fn every_corpus_element_type_sorts_like_sort_by() {
     assert_eq!(heap.into_sorted_vec(), pairs);
 
     let mut words: Vec<String> = (0..500)
-        .map(|i| format!("{:016x}-{i:03}", rng.next_u64()))
+        .map(|i| format!("{:016x}-{:03}", rng.next_u64(), i))
         .collect();
     let heap = BinaryHeap::from_vec(words.clone(), Min);
     words.sort_by(|a, b| b.cmp(a));

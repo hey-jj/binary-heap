@@ -53,14 +53,35 @@ fn strict_vs_sorted(seed: u64, order: fn(&i64, &i64) -> Ordering, name: &str) {
                 heap.push(value);
                 model.push(value);
             }
-            1 => assert_eq!(heap.pop(), model.pop(), "{name} seed {seed} step {step}"),
-            2 => assert_eq!(heap.peek(), model.peek(), "{name} seed {seed} step {step}"),
+            1 => assert_eq!(
+                heap.pop(),
+                model.pop(),
+                "{} seed {} step {}",
+                name,
+                seed,
+                step
+            ),
+            2 => assert_eq!(
+                heap.peek(),
+                model.peek(),
+                "{} seed {} step {}",
+                name,
+                seed,
+                step
+            ),
             _ => {
                 heap.clear();
                 model.clear();
             }
         }
-        assert_eq!(heap.len(), model.len(), "{name} seed {seed} step {step}");
+        assert_eq!(
+            heap.len(),
+            model.len(),
+            "{} seed {} step {}",
+            name,
+            seed,
+            step
+        );
     }
 }
 
@@ -80,14 +101,35 @@ fn strict_vs_std(seed: u64, order: fn(&i64, &i64) -> Ordering, name: &str) {
                 heap.push(value);
                 model.push(value);
             }
-            1 => assert_eq!(heap.pop(), model.pop(), "{name} seed {seed} step {step}"),
-            2 => assert_eq!(heap.peek(), model.peek(), "{name} seed {seed} step {step}"),
+            1 => assert_eq!(
+                heap.pop(),
+                model.pop(),
+                "{} seed {} step {}",
+                name,
+                seed,
+                step
+            ),
+            2 => assert_eq!(
+                heap.peek(),
+                model.peek(),
+                "{} seed {} step {}",
+                name,
+                seed,
+                step
+            ),
             _ => {
                 heap.clear();
                 model.clear();
             }
         }
-        assert_eq!(heap.len(), model.len(), "{name} seed {seed} step {step}");
+        assert_eq!(
+            heap.len(),
+            model.len(),
+            "{} seed {} step {}",
+            name,
+            seed,
+            step
+        );
     }
 }
 
@@ -121,23 +163,35 @@ fn tied_lockstep(seed: u64, order: fn(&i64, &i64) -> Ordering, name: &str) {
                 assert_eq!(
                     ours.is_some(),
                     theirs.is_some(),
-                    "{name} seed {seed} step {step}"
+                    "{} seed {} step {}",
+                    name,
+                    seed,
+                    step
                 );
                 assert_eq!(
                     ours.is_some(),
                     stds.is_some(),
-                    "{name} seed {seed} step {step}"
+                    "{} seed {} step {}",
+                    name,
+                    seed,
+                    step
                 );
                 if let (Some(a), Some(b), Some(c)) = (ours, theirs, stds) {
                     assert_eq!(
                         order(&a, &b),
                         Ordering::Equal,
-                        "{name} seed {seed} step {step}"
+                        "{} seed {} step {}",
+                        name,
+                        seed,
+                        step
                     );
                     assert_eq!(
                         order(&a, &c),
                         Ordering::Equal,
-                        "{name} seed {seed} step {step}"
+                        "{} seed {} step {}",
+                        name,
+                        seed,
+                        step
                     );
                     popped.push(a);
                 }
@@ -149,34 +203,53 @@ fn tied_lockstep(seed: u64, order: fn(&i64, &i64) -> Ordering, name: &str) {
                 assert_eq!(
                     ours.is_some(),
                     theirs.is_some(),
-                    "{name} seed {seed} step {step}"
+                    "{} seed {} step {}",
+                    name,
+                    seed,
+                    step
                 );
                 if let (Some(a), Some(b), Some(c)) = (ours, theirs, stds) {
                     assert_eq!(
                         order(&a, &b),
                         Ordering::Equal,
-                        "{name} seed {seed} step {step}"
+                        "{} seed {} step {}",
+                        name,
+                        seed,
+                        step
                     );
                     assert_eq!(
                         order(&a, &c),
                         Ordering::Equal,
-                        "{name} seed {seed} step {step}"
+                        "{} seed {} step {}",
+                        name,
+                        seed,
+                        step
                     );
                 }
             }
         }
-        assert_eq!(heap.len(), sorted.len(), "{name} seed {seed} step {step}");
+        assert_eq!(
+            heap.len(),
+            sorted.len(),
+            "{} seed {} step {}",
+            name,
+            seed,
+            step
+        );
         assert_eq!(
             heap.len(),
             std_model.len(),
-            "{name} seed {seed} step {step}"
+            "{} seed {} step {}",
+            name,
+            seed,
+            step
         );
     }
 
     popped.extend_from_slice(heap.as_slice());
     popped.sort_unstable();
     pushed.sort_unstable();
-    assert_eq!(popped, pushed, "{name} seed {seed} element multiset");
+    assert_eq!(popped, pushed, "{} seed {} element multiset", name, seed);
 }
 
 #[test]
@@ -232,9 +305,9 @@ fn into_sorted_vec_matches_sort_by_at_every_corpus_length() {
             let capacity = heap.capacity();
             let sorted = heap.into_sorted_vec();
 
-            assert_eq!(sorted, expected, "{name} at length {len}");
+            assert_eq!(sorted, expected, "{} at length {}", name, len);
             // Sorting happens in the heap's own buffer, so nothing new is allocated.
-            assert_eq!(sorted.capacity(), capacity, "{name} at length {len}");
+            assert_eq!(sorted.capacity(), capacity, "{} at length {}", name, len);
             cases += 1;
         }
     }
@@ -273,7 +346,9 @@ fn from_vec_drains_like_a_push_loop_under_a_strict_order() {
             assert_eq!(
                 bulk.into_sorted_vec(),
                 pushed.into_sorted_vec(),
-                "{name} seed {seed}"
+                "{} seed {}",
+                name,
+                seed
             );
             cases += 1;
         }

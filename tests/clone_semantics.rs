@@ -67,7 +67,9 @@ fn clone_from_adopts_source_comparator() {
             assert_eq!(
                 receiver.comparator().compare(&left, &right),
                 source.comparator().compare(&left, &right),
-                "pair {left} {right}"
+                "pair {} {}",
+                left,
+                right
             );
         }
     }
@@ -165,7 +167,7 @@ fn a_clone_and_its_source_agree_step_for_step_through_a_shared_program() {
 
         for step in 0..200 {
             if rng.below(3) == 0 {
-                assert_eq!(original.pop(), copy.pop(), "seed {seed} step {step}");
+                assert_eq!(original.pop(), copy.pop(), "seed {} step {}", seed, step);
             } else {
                 let value = rng.next_u64() as i64;
                 original.push(value);
@@ -174,11 +176,13 @@ fn a_clone_and_its_source_agree_step_for_step_through_a_shared_program() {
             assert_eq!(
                 original.as_slice(),
                 copy.as_slice(),
-                "seed {seed} step {step}"
+                "seed {} step {}",
+                seed,
+                step
             );
         }
 
-        assert_eq!(drain(original), drain(copy), "seed {seed}");
+        assert_eq!(drain(original), drain(copy), "seed {}", seed);
         cases += 1;
     }
 

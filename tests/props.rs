@@ -114,7 +114,9 @@ fn drain_and_check<C: Compare<i64>>(seed: u64, cmp: C, name: &str) {
             assert_ne!(
                 heap.comparator().compare(previous, &item),
                 Ordering::Less,
-                "{name} seed {seed}: drain rose"
+                "{} seed {}: drain rose",
+                name,
+                seed
             );
         }
         drained.push(item);
@@ -123,7 +125,11 @@ fn drain_and_check<C: Compare<i64>>(seed: u64, cmp: C, name: &str) {
     let mut expected = values;
     expected.sort_unstable();
     drained.sort_unstable();
-    assert_eq!(drained, expected, "{name} seed {seed}: multiset changed");
+    assert_eq!(
+        drained, expected,
+        "{} seed {}: multiset changed",
+        name, seed
+    );
 }
 
 #[test]
@@ -164,14 +170,19 @@ fn into_sorted_vec_never_falls_and_keeps_every_element() {
 
         let sorted = BinaryHeap::from_vec(values.clone(), order).into_sorted_vec();
         for pair in sorted.windows(2) {
-            assert_ne!(order(&pair[0], &pair[1]), Ordering::Greater, "seed {seed}");
+            assert_ne!(
+                order(&pair[0], &pair[1]),
+                Ordering::Greater,
+                "seed {}",
+                seed
+            );
         }
 
         let mut expected = values;
         expected.sort_unstable();
         let mut got = sorted;
         got.sort_unstable();
-        assert_eq!(got, expected, "seed {seed}");
+        assert_eq!(got, expected, "seed {}", seed);
         cases += 1;
     }
 
@@ -196,7 +207,7 @@ fn reversing_the_comparator_reverses_the_drain() {
         let mut up_drain = up.into_sorted_vec();
         let down_drain = down.into_sorted_vec();
         up_drain.reverse();
-        assert_eq!(up_drain, down_drain, "seed {seed}");
+        assert_eq!(up_drain, down_drain, "seed {}", seed);
         cases += 1;
     }
 
@@ -223,7 +234,8 @@ fn extend_agrees_with_a_push_loop() {
         assert_eq!(
             extended.into_sorted_vec(),
             pushed.into_sorted_vec(),
-            "seed {seed}"
+            "seed {}",
+            seed
         );
         cases += 1;
     }
@@ -247,20 +259,20 @@ fn push_pop_and_bulk_build_stay_inside_the_comparison_bounds() {
         let mut heap = BinaryHeap::from_vec(values, counted);
 
         let build = calls.get();
-        assert!(build <= 2 * len, "from_vec at {len} used {build}");
+        assert!(build <= 2 * len, "from_vec at {} used {}", len, build);
 
         calls.set(0);
         heap.push(rng.next_u64() as i64);
         let push = calls.get();
         let push_bound = floor_log2(heap.len()) as usize + 1;
-        assert!(push <= push_bound, "push at {len} used {push}");
+        assert!(push <= push_bound, "push at {} used {}", len, push);
 
         let before = heap.len();
         calls.set(0);
         heap.pop();
         let pop = calls.get();
         let pop_bound = 2 * floor_log2(before) as usize + 2;
-        assert!(pop <= pop_bound, "pop at {before} used {pop}");
+        assert!(pop <= pop_bound, "pop at {} used {}", before, pop);
 
         cases += 1;
     }

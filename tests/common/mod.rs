@@ -7,6 +7,7 @@
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap as StdHeap;
+use std::fmt;
 
 use binary_heap::{BinaryHeap, Compare};
 
@@ -52,7 +53,12 @@ pub fn assert_heap_property<T, C: Compare<T>>(
         assert_ne!(
             cmp.compare(&items[parent], &items[child]),
             Ordering::Less,
-            "{name} seed {seed} step {step}: element {child} outranks its parent {parent}"
+            "{} seed {} step {}: element {} outranks its parent {}",
+            name,
+            seed,
+            step,
+            child,
+            parent
         );
     }
 }
@@ -105,10 +111,18 @@ impl<T, C: Compare<T>> SortedModel<T, C> {
 
 /// Element wrapper whose `Ord` calls a stored function pointer, so the standard-library heap can
 /// be driven by the same comparator the crate is given.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Keyed<T> {
     pub value: T,
     pub order: fn(&T, &T) -> Ordering,
+}
+
+/// Prints the value and skips the comparator. A function pointer prints as an address, which tells
+/// a reader nothing, and deriving it would ask for `Debug` on a type holding two elided lifetimes.
+impl<T: fmt::Debug> fmt::Debug for Keyed<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Keyed").field("value", &self.value).finish()
+    }
 }
 
 impl<T> PartialEq for Keyed<T> {

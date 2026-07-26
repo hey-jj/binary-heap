@@ -6,7 +6,6 @@ rust-version = "1.56.0"
 description = "Binary heap ordered by a comparator value instead of by Ord. no_std."
 license = "MIT"
 repository = "https://github.com/hey-jj/binary-heap"
-readme = "README.md"
 keywords = ["heap", "priority-queue", "comparator", "sorting", "no-std"]
 categories = ["data-structures", "no-std"]
 include = ["src/**", "README.md", "LICENSE", "CHANGELOG.md"]
