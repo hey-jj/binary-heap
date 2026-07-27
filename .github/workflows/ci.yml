@@ -21,10 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.56.0 --profile minimal
-      # Tests and doctests too. `check --lib` compiled neither, so the declared floor held for the
-      # library and went untested on the examples a reader copies.
+      # The floor is a promise about the shipped library, so this job builds it and runs the
+      # examples in its docs. `check --lib` compiled neither the doctests nor anything else a
+      # reader copies. The full test suite runs on stable in the gate job above.
       #
-      # The two skipped tests build `vec![(); usize::MAX]`. On 1.56.0 that writes every element in
-      # a loop and never returns. Later releases build it in constant time. Nothing in this crate
-      # is involved, and the gate job above runs both tests in full.
-      - run: cargo +1.56.0 test --locked -- --skip a_full_length_heap_of_zero_sized_elements --skip push_past_the_zero_sized_length_limit
+      # `cargo test --doc` compiles dev-dependencies, which is safe here only because this crate
+      # declares none. A crate that has them must strip them or drop this second command.
+      - run: cargo +1.56.0 build --lib --locked
+      - run: cargo +1.56.0 test --doc --locked

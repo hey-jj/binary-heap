@@ -93,8 +93,8 @@ an order the comparator itself stops giving.
 `#![no_std]` with `extern crate alloc`, so an allocator is the only thing needed. No cargo
 features and no dependencies. `#![forbid(unsafe_code)]`.
 
-MSRV is 1.56.0, which is what edition 2021 needs. A CI job runs the test suite and the doctests on
-that exact release, so the floor is tested and not asserted.
+MSRV is 1.56.0, which is what edition 2021 needs. A CI job builds the library and runs the doctests
+on that exact release, so the floor is tested and not asserted. The full test suite runs on stable.
 
 ## License
 

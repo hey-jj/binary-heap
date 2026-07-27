@@ -155,7 +155,8 @@ fn a_full_length_heap_of_zero_sized_elements_builds_and_sorts_without_walking_it
     // that walked it would run longer than the machine will, so the check is a timeout.
     //
     // That constant-time build is newer than 1.56.0, which writes the elements one at a time and
-    // never returns. The MSRV job skips this test for that reason and nothing else.
+    // never returns. Nothing in this crate is involved, and the test suite runs on stable only, so
+    // this test never sees 1.56.0.
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let mut heap = BinaryHeap::from_vec(vec![(); usize::MAX], Max);
@@ -314,7 +315,7 @@ fn a_comparator_that_panics_leaves_every_element_in_the_heap() {
 #[should_panic(expected = "capacity overflow")]
 fn push_past_the_zero_sized_length_limit_panics() {
     // The one input that makes `push` panic. `vec![(); usize::MAX]` costs nothing to build, so the
-    // next push has nowhere to put the element and `Vec` says so. Skipped by the MSRV job for the
+    // next push has nowhere to put the element and `Vec` says so. Runs on stable only, for the
     // same reason as the test above.
     let mut heap = BinaryHeap::from_vec(vec![(); usize::MAX], Max);
     heap.push(());
