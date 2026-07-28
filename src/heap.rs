@@ -1,8 +1,10 @@
-//! The heap and the guard [`BinaryHeap::peek_mut`] returns.
+//! The heap, its two iterators, and the guard [`BinaryHeap::peek_mut`] returns.
 
+use alloc::vec;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
+use core::iter::FusedIterator;
 use core::mem;
 use core::ops::{Deref, DerefMut};
 use core::slice;
@@ -443,8 +445,10 @@ impl<T, C> BinaryHeap<T, C> {
     /// let heap = BinaryHeap::from_vec(vec![1, 5, 3], Max);
     /// assert_eq!(heap.iter().sum::<i32>(), 9);
     /// ```
-    pub fn iter(&self) -> slice::Iter<'_, T> {
-        self.data.iter()
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.data.iter(),
+        }
     }
 }
 
@@ -514,7 +518,7 @@ impl<T, C: Compare<T> + Default> FromIterator<T> for BinaryHeap<T, C> {
 
 impl<T, C> IntoIterator for BinaryHeap<T, C> {
     type Item = T;
-    type IntoIter = alloc::vec::IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     /// Yields the elements in heap-array order, unsorted. For sorted output call
     /// [`into_sorted_vec`](BinaryHeap::into_sorted_vec) first.
@@ -528,13 +532,15 @@ impl<T, C> IntoIterator for BinaryHeap<T, C> {
     /// assert_eq!(heap.into_iter().sum::<i32>(), 9);
     /// ```
     fn into_iter(self) -> Self::IntoIter {
-        self.data.into_iter()
+        IntoIter {
+            inner: self.data.into_iter(),
+        }
     }
 }
 
 impl<'a, T, C> IntoIterator for &'a BinaryHeap<T, C> {
     type Item = &'a T;
-    type IntoIter = slice::Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     /// Yields references in heap-array order, unsorted.
     ///
@@ -549,7 +555,7 @@ impl<'a, T, C> IntoIterator for &'a BinaryHeap<T, C> {
     /// assert_eq!(seen, vec![1, 3, 5]);
     /// ```
     fn into_iter(self) -> Self::IntoIter {
-        self.data.iter()
+        self.iter()
     }
 }
 
@@ -569,6 +575,161 @@ impl<T: fmt::Debug, C> fmt::Debug for BinaryHeap<T, C> {
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.data.iter()).finish()
+    }
+}
+
+/// References to a heap's elements, returned by [`BinaryHeap::iter`].
+///
+/// The order is arbitrary. It is the heap-array order, not sorted order.
+///
+/// This is a newtype over the buffer's own iterator, so the buffer type stays private and every
+/// method below costs what the wrapped iterator costs.
+///
+/// # Examples
+///
+/// ```
+/// use binary_heap::{BinaryHeap, Max};
+///
+/// let heap = BinaryHeap::from_vec(vec![1, 5, 3], Max);
+///
+/// let mut seen: Vec<i32> = heap.iter().copied().collect();
+/// seen.sort_unstable();
+/// assert_eq!(seen, vec![1, 3, 5]);
+/// ```
+pub struct Iter<'a, T> {
+    inner: slice::Iter<'a, T>,
+}
+
+// Written out rather than derived. `slice::Iter` is `Clone` for every `T`, and a derive would add
+// a `T: Clone` bound that takes that away.
+impl<T> Clone for Iter<'_, T> {
+    fn clone(&self) -> Self {
+        Iter {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn count(self) -> usize {
+        self.inner.count()
+    }
+
+    fn last(self) -> Option<&'a T> {
+        self.inner.last()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<&'a T> {
+        self.inner.nth(n)
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+    fn next_back(&mut self) -> Option<&'a T> {
+        self.inner.next_back()
+    }
+}
+
+impl<T> ExactSizeIterator for Iter<'_, T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> FusedIterator for Iter<'_, T> {}
+
+impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Iter").field(&self.inner.as_slice()).finish()
+    }
+}
+
+/// A heap's elements by value, returned by `<BinaryHeap as IntoIterator>::into_iter`.
+///
+/// The order is arbitrary. It is the heap-array order, not sorted order. For sorted output call
+/// [`into_sorted_vec`](BinaryHeap::into_sorted_vec) instead.
+///
+/// This is a newtype over the buffer's own iterator, so the buffer type stays private and every
+/// method below costs what the wrapped iterator costs.
+///
+/// # Examples
+///
+/// ```
+/// use binary_heap::{BinaryHeap, Max};
+///
+/// let heap = BinaryHeap::from_vec(vec![1, 5, 3], Max);
+///
+/// let mut seen: Vec<i32> = heap.into_iter().collect();
+/// seen.sort_unstable();
+/// assert_eq!(seen, vec![1, 3, 5]);
+/// ```
+pub struct IntoIter<T> {
+    inner: vec::IntoIter<T>,
+}
+
+// `vec::IntoIter` is `Clone` only when the elements are, so this bound is the wrapped type's own
+// bound and takes nothing away.
+impl<T: Clone> Clone for IntoIter<T> {
+    fn clone(&self) -> Self {
+        IntoIter {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn count(self) -> usize {
+        self.inner.count()
+    }
+
+    fn last(self) -> Option<T> {
+        self.inner.last()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.inner.nth(n)
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.next_back()
+    }
+}
+
+impl<T> ExactSizeIterator for IntoIter<T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> FusedIterator for IntoIter<T> {}
+
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("IntoIter")
+            .field(&self.inner.as_slice())
+            .finish()
     }
 }
 

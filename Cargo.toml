@@ -1,13 +1,13 @@
 [package]
 name = "binary-heap"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.56.0"
 description = "Binary heap ordered by a comparator value instead of by Ord. no_std."
-license = "MIT"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/hey-jj/binary-heap"
 keywords = ["heap", "priority-queue", "comparator", "sorting", "no-std"]
 categories = ["data-structures", "no-std"]
-include = ["src/**", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/**", "README.md", "LICENSE-MIT", "LICENSE-APACHE", "CHANGELOG.md"]
 
 [dependencies]

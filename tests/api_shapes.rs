@@ -6,8 +6,10 @@
 //! test and not an assumption.
 
 use std::cmp::Ordering;
+use std::fmt::Debug;
+use std::iter::FusedIterator;
 
-use binary_heap::{BinaryHeap, Compare, MaxHeap, MinHeap};
+use binary_heap::{BinaryHeap, Compare, IntoIter, Iter, Max, MaxHeap, MinHeap};
 
 /// A comparator chosen after the program starts, which is the shape a runtime flag produces.
 type BoxedOrder = Box<dyn Fn(&i32, &i32) -> Ordering>;
@@ -115,4 +117,71 @@ fn a_heap_of_send_elements_crosses_a_thread_boundary() {
     let heap = BinaryHeap::from_vec(vec![4i64, 1, 9], |a: &i64, b: &i64| a.cmp(b));
     let handle = std::thread::spawn(move || heap.into_sorted_vec());
     assert_eq!(handle.join().unwrap(), vec![1, 4, 9]);
+}
+
+/// Names every trait the buffer's own iterators handed callers before the newtypes existed.
+///
+/// Passing an iterator through this is the check that wrapping took nothing away.
+fn every_capability<I>(iterator: I) -> I
+where
+    I: DoubleEndedIterator + ExactSizeIterator + FusedIterator + Debug,
+{
+    iterator
+}
+
+#[test]
+fn iter_returns_the_crate_type_and_keeps_every_capability_the_slice_iterator_gave() {
+    let heap = BinaryHeap::from_vec(vec![1, 5, 3], Max);
+    // Heap-array order, which is arbitrary. Every expectation below reads it from the heap rather
+    // than restating it, so this tests the iterator and not the arrangement.
+    let order: Vec<i32> = heap.as_slice().to_vec();
+
+    // The annotation is the assertion. `slice::Iter` would not satisfy it.
+    let mut borrowed: Iter<'_, i32> = every_capability(heap.iter());
+    assert_eq!(borrowed.len(), 3);
+    assert_eq!(borrowed.size_hint(), (3, Some(3)));
+    assert_eq!(
+        format!("{:?}", borrowed),
+        format!("Iter({:?})", heap.as_slice())
+    );
+
+    // `Clone` holds for every element type, as it does on the wrapped iterator.
+    assert_eq!(borrowed.clone().copied().collect::<Vec<i32>>(), order);
+    let mut backward = order.clone();
+    backward.reverse();
+    assert_eq!(
+        borrowed.clone().rev().copied().collect::<Vec<i32>>(),
+        backward
+    );
+
+    assert_eq!(borrowed.next_back(), order.last());
+    assert_eq!(borrowed.next(), order.first());
+    assert_eq!(borrowed.count(), 1);
+
+    // `nth` skips from the front, counting from the element `next` would return.
+    assert_eq!(heap.iter().nth(1), order.get(1));
+
+    // `&heap` iterates through the same type.
+    let by_reference: Iter<'_, i32> = (&heap).into_iter();
+    assert_eq!(by_reference.last(), order.last());
+}
+
+#[test]
+fn into_iter_returns_the_crate_type_and_keeps_every_capability_the_vector_iterator_gave() {
+    let heap = BinaryHeap::from_vec(vec![1, 5, 3], Max);
+    let order: Vec<i32> = heap.as_slice().to_vec();
+
+    // The annotation is the assertion. `alloc::vec::IntoIter` would not satisfy it.
+    let mut owned: IntoIter<i32> = every_capability(heap.into_iter());
+    assert_eq!(owned.len(), 3);
+    assert_eq!(owned.size_hint(), (3, Some(3)));
+    assert_eq!(format!("{:?}", owned), format!("IntoIter({:?})", order));
+
+    // `Clone` carries the wrapped iterator's own bound, so it asks for `i32: Clone`.
+    assert_eq!(owned.clone().collect::<Vec<i32>>(), order);
+
+    assert_eq!(owned.next_back(), order.last().copied());
+    // `nth` skips from the front, counting from the element `next` would return.
+    assert_eq!(owned.nth(1), order.get(1).copied());
+    assert_eq!(owned.count(), 0);
 }

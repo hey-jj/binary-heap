@@ -60,4 +60,4 @@ mod compare;
 mod heap;
 
 pub use compare::{Compare, Max, Min};
-pub use heap::{BinaryHeap, MaxHeap, MinHeap, PeekMut};
+pub use heap::{BinaryHeap, IntoIter, Iter, MaxHeap, MinHeap, PeekMut};

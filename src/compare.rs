@@ -66,7 +66,7 @@ where
 /// let heap = BinaryHeap::from_vec(vec![2, 9, 4], Max);
 /// assert_eq!(heap.peek(), Some(&9));
 /// ```
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Max;
 
 /// Orders by [`Ord`] reversed and puts the least element at the root.
@@ -79,7 +79,7 @@ pub struct Max;
 /// let heap = BinaryHeap::from_vec(vec![2, 9, 4], Min);
 /// assert_eq!(heap.peek(), Some(&2));
 /// ```
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Min;
 
 impl<T: Ord + ?Sized> Compare<T> for Max {

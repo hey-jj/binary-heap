@@ -10,7 +10,7 @@ values over the one mechanism, not separate code.
 
 ```toml
 [dependencies]
-binary-heap = "0.1.0"
+binary-heap = "0.2.0"
 ```
 
 ## Use
@@ -78,6 +78,16 @@ to invent one and then read the elements under an order that did not arrange the
 
 `BinaryHeap` shadows `std::collections::BinaryHeap` under a glob import. Import it by path.
 
+## Prior art
+
+`binary-heap-plus` does this job too and has done for years. It is the established choice, and it
+is the first place to look if you want the larger surface and the cargo features that come with
+it.
+
+This crate is an independent take on the same idea. The differences a caller notices are
+`#![forbid(unsafe_code)]`, no dependencies, no cargo features, and one mechanism for order, so
+`Max` and `Min` are ordinary `Compare` values rather than separate types.
+
 ## Design
 
 The comparator is a private field, written only in the same expression that writes the element
@@ -98,4 +108,9 @@ on that exact release, so the floor is tested and not asserted. The full test su
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or the
+[MIT license](LICENSE-MIT) at your option.
+
+Unless you state otherwise, any contribution you intentionally submit for
+inclusion in this crate, as defined in the Apache-2.0 license, is dual licensed
+as above, with no additional terms or conditions.
