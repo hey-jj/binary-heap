@@ -9,7 +9,7 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
       - run: cargo build
       - run: cargo test
@@ -19,7 +19,7 @@ jobs:
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install 1.56.0 --profile minimal
       # The floor is a promise about the shipped library, so this job builds it and runs the
       # examples in its docs. `check --lib` compiled neither the doctests nor anything else a
