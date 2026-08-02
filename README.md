@@ -6,7 +6,7 @@ A binary heap ordered by a comparator you supply at construction.
 element in a newtype, which changes the type you store, and it cannot express an order chosen at
 run time. Here the order is a value. It can be a closure, a function pointer, a `Box<dyn Fn>`
 picked from a table, or a named type that implements `Compare`. `Max` and `Min` are two such
-values over the one mechanism, not separate code.
+values.
 
 ```toml
 [dependencies]
@@ -23,7 +23,7 @@ let mut heap = BinaryHeap::from_vec(vec![3, 1, 4, 1, 5], Max);
 assert_eq!(heap.pop(), Some(5));
 assert_eq!(heap.into_sorted_vec(), vec![1, 1, 3, 4]);
 
-// An order picked at run time, which no Ord-bound heap can express.
+// An order picked at run time.
 let by_last_digit: Box<dyn Fn(&i32, &i32) -> Ordering> =
     Box::new(|a, b| (a % 10).cmp(&(b % 10)));
 let mut runtime = BinaryHeap::from_vec(vec![25, 19, 33], by_last_digit);
@@ -62,15 +62,16 @@ heap's own buffer, and allocates nothing.
 
 `peek_mut` returns a guard that sifts once when it drops, and only if the guard handed out a
 `&mut`. Reading through the guard costs no comparisons. That is the k-way merge path: take the
-next item from the reader at the root and put the reader back for one sift, rather than a pop plus
-a push for two.
+next item from the reader at the root and put the reader back for one sift. A pop plus a push
+would cost two.
 
 ## Limits
 
 The heap is not stable. Elements that compare `Equal` come out in an unspecified order.
 
 A comparator that is not a total order is accepted. Every operation still ends, stays in bounds,
-and keeps every element exactly once. Ordering guarantees are the only thing lost. Detecting an
+and keeps every element exactly once. Only the order of the output breaks. The inconsistent
+comparator tests in `tests/edge_cases.rs` drive such comparators and check exactly this. Detecting an
 inconsistent comparator costs more than a quadratic scan, so this crate does not try.
 
 There is no `serde` support. A serialized heap cannot carry its comparator, so decoding would have
@@ -86,7 +87,7 @@ it.
 
 This crate is an independent take on the same idea. The differences a caller notices are
 `#![forbid(unsafe_code)]`, no dependencies, no cargo features, and one mechanism for order, so
-`Max` and `Min` are ordinary `Compare` values rather than separate types.
+`Max` and `Min` are ordinary `Compare` values.
 
 ## Design
 
@@ -100,11 +101,11 @@ an order the comparator itself stops giving.
 
 ## Requirements
 
-`#![no_std]` with `extern crate alloc`, so an allocator is the only thing needed. No cargo
-features and no dependencies. `#![forbid(unsafe_code)]`.
+`#![no_std]` with `extern crate alloc`, so an allocator is the only thing needed. The crate has no
+dependencies and no cargo features. `#![forbid(unsafe_code)]`.
 
 MSRV is 1.56.0, which is what edition 2021 needs. A CI job builds the library and runs the doctests
-on that exact release, so the floor is tested and not asserted. The full test suite runs on stable.
+on that exact release. The full test suite runs on stable.
 
 ## License
 
